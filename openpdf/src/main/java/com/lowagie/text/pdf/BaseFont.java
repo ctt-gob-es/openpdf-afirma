@@ -57,6 +57,7 @@ import java.io.InputStream;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -321,7 +322,7 @@ public abstract class BaseFont {
     /**
      * list of the 14 built in fonts.
      */
-    protected static final HashMap<String, PdfName> BuiltinFonts14 = new HashMap<>();
+    protected static final HashMap<String, PdfName> BuiltinFonts14 = new LinkedHashMap<>();
     /**
      * cache for the fonts already used.
      */

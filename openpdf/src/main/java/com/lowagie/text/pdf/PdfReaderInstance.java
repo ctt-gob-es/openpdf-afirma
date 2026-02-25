@@ -53,6 +53,7 @@ import com.lowagie.text.error_messages.MessageLocalization;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -67,9 +68,9 @@ class PdfReaderInstance {
     int[] myXref;
     PdfReader reader;
     RandomAccessFileOrArray file;
-    HashMap<Integer, PdfImportedPage> importedPages = new HashMap<>();
+    HashMap<Integer, PdfImportedPage> importedPages = new LinkedHashMap<>();
     PdfWriter writer;
-    HashMap<Integer, ?> visited = new HashMap<>();
+    HashMap<Integer, ?> visited = new LinkedHashMap<>();
     ArrayList<Integer> nextRound = new ArrayList<>();
 
     PdfReaderInstance(PdfReader reader, PdfWriter writer) {

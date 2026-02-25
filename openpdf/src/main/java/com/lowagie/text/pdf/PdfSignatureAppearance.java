@@ -48,16 +48,6 @@
  */
 package com.lowagie.text.pdf;
 
-import com.lowagie.text.Chunk;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Element;
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.Font;
-import com.lowagie.text.Image;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.error_messages.MessageLocalization;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -73,7 +63,20 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import com.lowagie.text.Chunk;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.ExceptionConverter;
+import com.lowagie.text.Font;
+import com.lowagie.text.Image;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.error_messages.MessageLocalization;
 
 /**
  * This class takes care of the cryptographic options and appearances that form a signature.
@@ -134,7 +137,7 @@ public class PdfSignatureAppearance {
             + "425 924 653 904 653 676 c\n" + "653 581 602 525 512 461 c\n"
             + "462 425 441 402 441 318 c\n" + "287 318 l\n" + "h\n"
             + "282 240 170 -164 re\n" + "B\n" + "Q\n";
-    private static final float TOP_SECTION = 0.3f;
+    private static final float TOP_SECTION = 0.0f;
     private static final float MARGIN = 2;
     private final PdfTemplate[] app = new PdfTemplate[5];
     private final PdfStamperImp writer;
@@ -151,7 +154,7 @@ public class PdfSignatureAppearance {
     private PrivateKey privKey;
     private CRL[] crlList;
     private PdfName filter;
-    private boolean newField;
+    private boolean newField = true;
     private ByteBuffer sigout;
     private OutputStream originalout;
     private File tempFile;
@@ -209,6 +212,19 @@ public class PdfSignatureAppearance {
     PdfSignatureAppearance(PdfStamperImp writer) {
         this.writer = writer;
         fieldName = getNewSigName();
+    }
+    
+    PdfSignatureAppearance(final PdfStamperImp writer, final Calendar globalDate) {
+        this.writer = writer;
+        this.signDate = globalDate != null ? globalDate : new GregorianCalendar();
+        this.fieldName = getNewSigName();
+    }
+
+    PdfSignatureAppearance(final PdfStamperImp writer, final Calendar globalDate,
+    		final List<PRAcroForm.FieldInformation> signatureFieldNames) {
+        this.writer = writer;
+        this.signDate = globalDate!=null ? globalDate : new GregorianCalendar();
+        this.fieldName = getNewSigName(signatureFieldNames);
     }
 
     /**
@@ -459,7 +475,6 @@ public class PdfSignatureAppearance {
         this.pageRect.normalize();
         rect = new Rectangle(this.pageRect.getWidth(), this.pageRect.getHeight());
         this.page = page;
-        newField = true;
     }
 
     /**
@@ -481,6 +496,10 @@ public class PdfSignatureAppearance {
                     MessageLocalization.getComposedMessage(
                             "the.field.1.is.not.a.signature.field", fieldName));
         }
+        
+        // Se utilizara este campo de firma preexistente
+        this.newField = false;
+        
         this.fieldName = fieldName;
         PdfArray r = merged.getAsArray(PdfName.RECT);
         float llx = r.getAsNumber(0).floatValue();
@@ -586,16 +605,16 @@ public class PdfSignatureAppearance {
             String text;
             if (layer2Text == null) {
                 StringBuilder buf = new StringBuilder();
-                buf.append("Digitally signed by ")
+                buf.append("Firmado por ")
                         .append(PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN"))
                         .append('\n');
-                SimpleDateFormat sd = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss z");
-                buf.append("Date: ").append(sd.format(getSignDateNullSafe().getTime()));
+                SimpleDateFormat sd = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss z");
+                buf.append("Fecha: ").append(sd.format(getSignDateNullSafe().getTime()));
                 if (reason != null) {
-                    buf.append('\n').append("Reason: ").append(reason);
+                    buf.append('\n').append("Motivo: ").append(reason);
                 }
                 if (location != null) {
-                    buf.append('\n').append("Location: ").append(location);
+                    buf.append('\n').append("Lugar de firma: ").append(location);
                 }
                 text = buf.toString();
             } else {
@@ -1006,33 +1025,56 @@ public class PdfSignatureAppearance {
     }
 
     /**
-     * Gets a new signature fied name that doesn't clash with any existing name.
+     * Gets a new signature field name that doesn't clash with any existing name.
      *
-     * @return a new signature fied name
+     * @return a new signature field name
      */
     public final String getNewSigName() {
-        AcroFields af = writer.getAcroFields();
-        String name = "Signature";
+    	return getNewSigName(null);
+    }
+    
+    /**
+     * Gets a new signature field name that doesn't clash with any existing name.
+     * @param signatureFieldNames Field names to avoid
+     * @return a new signature field name
+     */
+    public String getNewSigName(final List<PRAcroForm.FieldInformation> signatureFieldNames) {
+        final AcroFields af = this.writer.getAcroFields();
+        String name = "Signature"; //$NON-NLS-1$
         int step = 0;
         boolean found = false;
         while (!found) {
             ++step;
             String n1 = name + step;
             if (af.getFieldItem(n1) != null) {
-                continue;
-            }
-            n1 += ".";
+				continue;
+			}
+            final String nameWithDot = n1 + "."; //$NON-NLS-1$
             found = true;
-            for (String fn : af.getAllFields().keySet()) {
-                if (fn.startsWith(n1)) {
+            for (final Object element : af.getFields().keySet()) {
+                final String fn = (String)element;
+                if (fn.startsWith(nameWithDot)) {
                     found = false;
                     break;
                 }
+            }
+            // Si parece que los hemos encontrado, hacemos una ultima
+            // comprobacion buscando el nombre con el resto de
+            if (found && signatureFieldNames != null) {
+            	for (int i = 0; found && i < signatureFieldNames.size(); i++) {
+            		final PRAcroForm.FieldInformation fieldInfo = signatureFieldNames.get(i);
+            		if (fieldInfo.getName() != null
+            				&& (fieldInfo.getName().equals(n1) || fieldInfo.getName().startsWith(nameWithDot))) {
+            			found = false;
+            			break;
+            		}
+            	}
             }
         }
         name += step;
         return name;
     }
+    
 
     /**
      * This is the first method to be called when using external signatures. The general sequence is: preClose(),
@@ -1046,9 +1088,24 @@ public class PdfSignatureAppearance {
      * @throws DocumentException on error
      */
     public void preClose() throws IOException, DocumentException {
-        preClose(null);
+        preClose(null, null, null);
     }
-
+    
+    /**
+     * This is the first method to be called when using external signatures. The general sequence is:
+     * preClose(), getDocumentBytes() and close().
+     * <p>
+     * If calling preClose() <B>dont't</B> call PdfStamper.close().
+     * <p>
+     * No external signatures are allowed if this method is called.
+     * @param globalDate Date
+     * @throws IOException on error
+     * @throws DocumentException on error
+     */
+    void preClose(final Calendar globalDate) throws IOException, DocumentException {
+        preClose(null, globalDate, null);
+    }
+    
     /**
      * This is the first method to be called when using external signatures. The general sequence is: preClose(),
      * getDocumentBytes() and close().
@@ -1067,16 +1124,45 @@ public class PdfSignatureAppearance {
      */
     public void preClose(Map<PdfName, Integer> exclusionSizes) throws IOException,
             DocumentException {
-        if (preClosed) {
+    	preClose(exclusionSizes, null, null);
+    }
+
+    /**
+     * This is the first method to be called when using external signatures. The general sequence is: preClose(),
+     * getDocumentBytes() and close().
+     * <p>
+     * If calling preClose() <B>dont't</B> call PdfStamper.close().
+     * <p>
+     * If using an external signature <CODE>exclusionSizes</CODE> must contain at least the
+     * <CODE>PdfName.CONTENTS</CODE> key with the size that it will take in the document. Note that due to the hex
+     * string coding this size should be byte_size*2+2.
+     *
+     * @param exclusionSizes a <CODE>HashMap</CODE> with names and sizes to be excluded in the signature calculation.
+     *                       The key is a <CODE>PdfName</CODE> and the value an <CODE>Integer</CODE>. At least the
+     *                       <CODE>PdfName.CONTENTS</CODE> must be present
+     * @param globalDate global date
+     * @param pages pages to stamp
+     * @throws IOException       on error
+     * @throws DocumentException on error
+     */
+    public void preClose(Map<PdfName, Integer> exclusionSizes, final Calendar globalDate, final List<Integer> pages) throws IOException,
+            DocumentException {
+        if (this.preClosed) {
             throw new DocumentException(
                     MessageLocalization.getComposedMessage("document.already.pre.closed"));
         }
         preClosed = true;
         AcroFields af = writer.getAcroFields();
         String name = getFieldName();
-        boolean fieldExists = !(isInvisible() || isNewField());
-        PdfIndirectReference refSig = writer.getPdfIndirectReference();
-        writer.setSigFlags(3);
+        
+        // Se elimina la comprobacion de si es el campo es visible o no, ya que
+        // eso impide que se puedan firmar campos de firma invisibles que ya
+        // existan
+        //final boolean fieldExists = !(isInvisible() || isNewField());
+        final boolean fieldExists = !isNewField();
+        
+        PdfIndirectReference refSig = this.writer.getPdfIndirectReference();
+        this.writer.setSigFlags(3);
         if (fieldExists) {
             //Patch by Lonzak: the signature dictionary must be added to the formfield and no the widget! (testdoc: SignatureWidgetFormfield-Separate.pdf)
             PdfDictionary data = af.getFieldItem(name).getValue(0);
@@ -1102,41 +1188,25 @@ public class PdfSignatureAppearance {
             sigField.put(PdfName.V, refSig);
             sigField.setFlags(PdfAnnotation.FLAGS_PRINT | PdfAnnotation.FLAGS_LOCKED);
 
-            int pagen = getPage();
-            // OJO... Modificacion de
-            // flopez-----------------------------------------------------
-            // if (!isInvisible())
-            // sigField.setWidget(getPageRect(), null);
-            // else
-            // sigField.setWidget(new Rectangle(0, 0), null);
-            if ((!isInvisible()) && (pagen == 0)) { // Si pagina en cero tonces firma
-                // en todas las paginas
-                int pages = writer.reader.getNumberOfPages();
-                for (int i = 1; i <= pages; i++) {
-                    PdfFormField field = PdfFormField.createEmpty(writer);
-                    this.page = i;
-                    pagen = i;
-                    field.setWidget(getPageRect(), null);
-                    field.setAppearance(PdfAnnotation.APPEARANCE_NORMAL, getAppearance());
-                    field.setPlaceInPage(i);
-                    field.setPage(i);
-                    field.setFlags(PdfAnnotation.FLAGS_PRINT);
-                    sigField.addKid(field);
-                    field = null;
-                }
-            } else if (!isInvisible()) // Si es una pagina especifica
-            {
-                sigField.setWidget(getPageRect(), null);
-            } else {
-                sigField.setWidget(new Rectangle(0, 0), null);
-            }
-            // ******************************************************************************
+            if (!isInvisible()) {
+				sigField.setWidget(getPageRect(), null);
+			} else {
+				sigField.setWidget(new Rectangle(0, 0), null);
+			}
             sigField.setAppearance(PdfAnnotation.APPEARANCE_NORMAL, getAppearance());
-            sigField.setPage(pagen);
-            writer.addAnnotation(sigField, pagen);
+            if (pages != null && pages.size() >= 1) {
+            	for (int i = 0 ; i < pages.size() ; i++) {
+    	            sigField.setPage(pages.get(i));
+    	            writer.addAnnotation(sigField, pages.get(i));
+            	}
+            } else {
+            	final int pagen = getPage();
+	            sigField.setPage(pagen);
+	            writer.addAnnotation(sigField, pagen);
+            }
         }
 
-        exclusionLocations = new HashMap<>();
+        exclusionLocations = new LinkedHashMap<>();
         if (cryptoDictionary == null) {
             if (PdfName.ADOBE_PPKLITE.equals(getFilter())) {
                 sigStandard = new PdfSigGenericPKCS.PPKLite(getProvider());

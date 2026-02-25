@@ -49,6 +49,7 @@
 package com.lowagie.text.pdf;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 class PageResources {
 
@@ -71,8 +72,8 @@ class PageResources {
         if (newNamePtr != null) {
             namePtr = newNamePtr;
         }
-        forbiddenNames = new HashMap<>();
-        usedNames = new HashMap<>();
+        forbiddenNames = new LinkedHashMap<>();
+        usedNames = new LinkedHashMap<>();
         if (resources == null) {
             return;
         }

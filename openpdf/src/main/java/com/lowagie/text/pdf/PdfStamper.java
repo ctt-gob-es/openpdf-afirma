@@ -46,16 +46,6 @@
  */
 package com.lowagie.text.pdf;
 
-import com.lowagie.text.DocWriter;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.Image;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.error_messages.MessageLocalization;
-import com.lowagie.text.pdf.collection.PdfCollection;
-import com.lowagie.text.pdf.interfaces.PdfEncryptionSettings;
-import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
-import com.lowagie.text.xml.xmp.XmpWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -65,10 +55,24 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.security.SignatureException;
 import java.security.cert.Certificate;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.lowagie.text.DocWriter;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.ExceptionConverter;
+import com.lowagie.text.Image;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.error_messages.MessageLocalization;
+import com.lowagie.text.pdf.PRAcroForm.FieldInformation;
+import com.lowagie.text.pdf.collection.PdfCollection;
+import com.lowagie.text.pdf.interfaces.PdfEncryptionSettings;
+import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
+import com.lowagie.text.xml.xmp.XmpWriter;
 
 /**
  * Applies extra content to the pages of a PDF document. This extra content can be all the objects allowed in
@@ -102,6 +106,19 @@ public class PdfStamper
     public PdfStamper(PdfReader reader, OutputStream os) throws DocumentException, IOException {
         stamper = new PdfStamperImp(reader, os, '\0', false);
     }
+    
+    /**
+     * Starts the process of adding extra content to an existing PDF document.
+     *
+     * @param reader the original document. It cannot be reused
+     * @param os     the output stream
+     * @param globalDate Date
+     * @throws DocumentException on error
+     * @throws IOException       on error
+     */
+    public PdfStamper(PdfReader reader, OutputStream os, Calendar globalDate) throws DocumentException, IOException {
+        this.stamper = new PdfStamperImp(reader, os, '\0', false, globalDate);
+    }
 
     /**
      * Starts the process of adding extra content to an existing PDF document.
@@ -131,7 +148,24 @@ public class PdfStamper
             throws DocumentException, IOException {
         stamper = new PdfStamperImp(reader, os, pdfVersion, append);
     }
-
+    
+    /**
+     * Starts the process of adding extra content to an existing PDF
+     * document, possibly as a new revision.
+     * @param reader the original document. It cannot be reused
+     * @param os the output stream
+     * @param pdfVersion the new pdf version or '\0' to keep the same version as the original
+     * document
+     * @param append if <CODE>true</CODE> appends the document changes as a new revision. This is
+     * only useful for multiple signatures as nothing is gained in speed or memory
+     * @param globalDate Date
+     * @throws DocumentException on error
+     * @throws IOException on error
+     */
+    private PdfStamper(final PdfReader reader, final OutputStream os, final char pdfVersion, final boolean append, final Calendar globalDate) throws DocumentException, IOException {
+        this.stamper = new PdfStamperImp(reader, os, pdfVersion, append, globalDate);
+    }
+    
     /**
      * Applies a digital signature to a document, possibly as a new revision, making possible multiple signatures. The
      * returned PdfStamper can be used normally as the signature is only applied when closing.
@@ -172,19 +206,65 @@ public class PdfStamper
      */
     public static PdfStamper createSignature(PdfReader reader, OutputStream os, char pdfVersion, File tempFile,
             boolean append) throws DocumentException, IOException {
+    	return createSignature(reader, os, pdfVersion, tempFile, append, null);
+    }
+
+    /**
+     * Applies a digital signature to a document, possibly as a new revision, making possible multiple signatures. The
+     * returned PdfStamper can be used normally as the signature is only applied when closing.
+     * <p>
+     * A possible use for adding a signature without invalidating an existing one is:
+     * </p>
+     * <pre>
+     * KeyStore ks = KeyStore.getInstance("pkcs12");
+     * ks.load(new FileInputStream("my_private_key.pfx"), "my_password".toCharArray());
+     * String alias = (String)ks.aliases().nextElement();
+     * PrivateKey key = (PrivateKey)ks.getKey(alias, "my_password".toCharArray());
+     * Certificate[] chain = ks.getCertificateChain(alias);
+     * PdfReader reader = new PdfReader("original.pdf");
+     * FileOutputStream fout = new FileOutputStream("signed.pdf");
+     * PdfStamper stp = PdfStamper.createSignature(reader, fout, '\0', new
+     * File("/temp"), true);
+     * PdfSignatureAppearance sap = stp.getSignatureAppearance();
+     * sap.setCrypto(key, chain, null, PdfSignatureAppearance.WINCER_SIGNED);
+     * sap.setReason("I'm the author");
+     * sap.setLocation("Lisbon");
+     * // comment next line to have an invisible signature
+     * sap.setVisibleSignature(new Rectangle(100, 100, 200, 200), 1, null);
+     * stp.close();
+     * </pre>
+     *
+     * @param reader     the original document
+     * @param os         the output stream or <CODE>null</CODE> to keep the document in the temporary file
+     * @param pdfVersion the new pdf version or '\0' to keep the same version as the original document
+     * @param tempFile   location of the temporary file. If it's a directory a temporary file will be created there. If
+     *                   it's a file it will be used directly. The file will be deleted on exit unless <CODE>os</CODE>
+     *                   is null. In that case the document can be retrieved directly from the temporary file. If it's
+     *                   <CODE>null</CODE> no temporary file will be created and memory will be used
+     * @param append     if <CODE>true</CODE> the signature and all the other content will be added as a new revision
+     *                   thus not invalidating existing signatures
+     * @param globalDate fecha para sello
+     * @return a <CODE>PdfStamper</CODE>
+     * @throws DocumentException on error
+     * @throws IOException       on error
+     */
+    public static PdfStamper createSignature(PdfReader reader, OutputStream os, char pdfVersion, File tempFile,
+            boolean append, final Calendar globalDate) throws DocumentException, IOException {
+    	final Calendar gDate = globalDate != null ? globalDate : new GregorianCalendar();
         PdfStamper stp;
         if (tempFile == null) {
             ByteBuffer bout = new ByteBuffer();
-            stp = new PdfStamper(reader, bout, pdfVersion, append);
-            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+            stp = new PdfStamper(reader, bout, pdfVersion, append, gDate);
+            final List<PRAcroForm.FieldInformation> formFieldNames = getFieldsWithSignatureName(reader.getAcroForm());
+            stp.sigApp = new PdfSignatureAppearance(stp.stamper, gDate, formFieldNames);
             stp.sigApp.setSigout(bout);
         } else {
             if (tempFile.isDirectory()) {
                 tempFile = Files.createTempFile(tempFile.toPath(), "pdf", null).toFile();
             }
             FileOutputStream fout = new FileOutputStream(tempFile);
-            stp = new PdfStamper(reader, fout, pdfVersion, append);
-            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+            stp = new PdfStamper(reader, fout, pdfVersion, append, globalDate);
+            stp.sigApp = new PdfSignatureAppearance(stp.stamper, globalDate);
             stp.sigApp.setTempFile(tempFile);
         }
         stp.sigApp.setOriginalout(os);
@@ -199,6 +279,23 @@ public class PdfStamper
         }
         return stp;
     }
+    
+    private static List<FieldInformation> getFieldsWithSignatureName(final PRAcroForm acroForm) {
+
+    	final List<PRAcroForm.FieldInformation> resultFormFields = new ArrayList<>();
+
+    	if (acroForm != null) {
+    		final List<?> formFields = acroForm.getFields();
+    		for (final Object field : formFields) {
+    			final PRAcroForm.FieldInformation fieldInfo = (PRAcroForm.FieldInformation) field;
+    			if (fieldInfo.getName() != null && fieldInfo.getName().startsWith("Signature")) { //$NON-NLS-1$
+    				resultFormFields.add(fieldInfo);
+    			}
+    		}
+    	}
+
+		return resultFormFields;
+	}
 
     /**
      * Applies a digital signature to a document. The returned PdfStamper can be used normally as the signature is only
@@ -372,7 +469,7 @@ public class PdfStamper
     public PdfSignatureAppearance getSignatureAppearance() {
         return sigApp;
     }
-
+    
     /**
      * Closes the document. No more content can be written after the document is closed.
      * <p>
@@ -382,9 +479,22 @@ public class PdfStamper
      * @throws DocumentException on error
      * @throws IOException       on error
      */
-    public void close() throws DocumentException, IOException {
-        if (!hasSignature) {
-            if (cleanMetadata && stamper.xmpMetadata == null) {
+	public void close() throws DocumentException, IOException {
+        close(null);
+    }
+
+    /**
+     * Closes the document. No more content can be written after the document is closed.
+     * <p>
+     * If closing a signed document with an external signature the closing must be done in the
+     * <CODE>PdfSignatureAppearance</CODE> instance.
+     * @param globalDate global date
+     * @throws DocumentException on error
+     * @throws IOException       on error
+     */
+    public void close(final Calendar globalDate) throws DocumentException, IOException {
+        if (!this.hasSignature) {
+            if (this.cleanMetadata && this.stamper.xmpMetadata == null) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 try {
                     XmpWriter writer = new XmpWriter(baos, moreInfo);
@@ -394,10 +504,10 @@ public class PdfStamper
                     // ignore exception
                 }
             }
-            stamper.close(moreInfo);
+            stamper.close(moreInfo, globalDate);
             return;
         }
-        sigApp.preClose();
+        sigApp.preClose(globalDate);
         PdfSigGenericPKCS sig = sigApp.getSigStandard();
         PdfLiteral lit = (PdfLiteral) sig.get(PdfName.CONTENTS);
         int totalBuf = (lit.getPosLength() - 2) / 2;

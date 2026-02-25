@@ -65,6 +65,17 @@ public class PdfSignature extends PdfDictionary {
         put(PdfName.FILTER, filter);
         put(PdfName.SUBFILTER, subFilter);
     }
+    
+    /** Creates new PdfSignature 
+     * @param type type to put
+     * @param filter filter to put
+     * @param subFilter subfilter to put
+     * */
+    public PdfSignature(final PdfName type, final PdfName filter, final PdfName subFilter) {
+        super(type);
+        put(PdfName.FILTER, filter);
+        put(PdfName.SUBFILTER, subFilter);
+    }
 
     public void setByteRange(int[] range) {
         PdfArray array = new PdfArray();

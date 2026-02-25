@@ -57,6 +57,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -109,13 +110,13 @@ class PdfCopyFieldsImp extends PdfWriter {
     }
 
     private final List<PdfReader> readers = new ArrayList<>();
-    private final Map<PdfReader, IntHashtable> pages2intrefs = new HashMap<>();
-    private final Map<PdfReader, IntHashtable> visited = new HashMap<>();
+    private final Map<PdfReader, IntHashtable> pages2intrefs = new LinkedHashMap<>();
+    private final Map<PdfReader, IntHashtable> visited = new LinkedHashMap<>();
     private final List<Object> calculationOrder = new ArrayList<>();
-    Map<PdfReader, IntHashtable> readers2intrefs = new HashMap<>();
+    Map<PdfReader, IntHashtable> readers2intrefs = new LinkedHashMap<>();
     List<AcroFields> fields = new ArrayList<>();
     RandomAccessFileOrArray file;
-    Map<String, Object> fieldTree = new HashMap<>();
+    Map<String, Object> fieldTree = new LinkedHashMap<>();
     List<PdfIndirectReference> pageRefs = new ArrayList<>();
     List<PdfDictionary> pageDics = new ArrayList<>();
     PdfDictionary resources = new PdfDictionary();
@@ -398,7 +399,7 @@ class PdfCopyFieldsImp extends PdfWriter {
         form.put(PdfName.DR, resources);
         propagate(resources, false);
         form.put(PdfName.DA, new PdfString("/Helv 0 Tf 0 g "));
-        tabOrder = new HashMap<>();
+        tabOrder = new LinkedHashMap<>();
         calculationOrderRefs = new ArrayList<>(calculationOrder);
         form.put(PdfName.FIELDS, branchForm(fieldTree, null, ""));
         if (hasSignature) {
@@ -517,7 +518,7 @@ class PdfCopyFieldsImp extends PdfWriter {
             Object obj = map.get(s);
             if (tk.hasMoreTokens()) {
                 if (obj == null) {
-                    Map<String, Object> tempMap = new HashMap<>();
+                    Map<String, Object> tempMap = new LinkedHashMap<>();
                     map.put(s, tempMap);
                     map = tempMap;
                 } else if (obj instanceof Map) {

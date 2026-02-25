@@ -46,13 +46,6 @@
  */
 package com.lowagie.text.pdf;
 
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Element;
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.Font;
-import com.lowagie.text.Image;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.error_messages.MessageLocalization;
 import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,9 +55,19 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.w3c.dom.Node;
+
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.ExceptionConverter;
+import com.lowagie.text.Font;
+import com.lowagie.text.Image;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.error_messages.MessageLocalization;
 
 /**
  * Query and change fields in existing documents either by method calls or by FDF merging.
@@ -108,7 +111,14 @@ public class AcroFields {
      * A field type.
      */
     public static final int FIELD_TYPE_SIGNATURE = 7;
-    private static final HashMap<String, String[]> stdFieldFontNames = new HashMap<>();
+    
+    /**
+     * N&uacute;mero m&aacute;ximo de saltos entre elementos que se permiten al intentar
+     * localizar el componente padre de otro.
+     */
+    private static final int MAX_NUM_LEAPS_TO_FIND_PARENT = 5;
+    
+    private static final HashMap<String, String[]> stdFieldFontNames = new LinkedHashMap<>();
     private static final PdfName[] buttonRemove = {PdfName.MK, PdfName.F, PdfName.FF, PdfName.Q, PdfName.BS,
             PdfName.BORDER};
 
@@ -136,8 +146,8 @@ public class AcroFields {
         stdFieldFontNames.put("STSo", new String[]{"STSong-Light", "UniGB-UCS2-H"});
     }
 
-    private final Map<Integer, BaseFont> extensionFonts = new HashMap<>();
-    private final Map<String, BaseFont> localFonts = new HashMap<>();
+    private final Map<Integer, BaseFont> extensionFonts = new LinkedHashMap<>();
+    private final Map<String, BaseFont> localFonts = new LinkedHashMap<>();
     PdfReader reader;
     PdfWriter writer;
     private Map<String, Item> fields;
@@ -276,7 +286,7 @@ public class AcroFields {
     }
 
     void fill() {
-        fields = new HashMap<>();
+        fields = new LinkedHashMap<>();
         PdfDictionary top = (PdfDictionary) PdfReader.getPdfObjectReleaseNullConverting(
                 reader.getCatalog().get(PdfName.ACROFORM));
         if (top == null) {
@@ -288,21 +298,42 @@ public class AcroFields {
         }
         for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
             PdfDictionary page = reader.getPageNRelease(k);
-            Object o = PdfReader.getPdfObjectRelease(page.get(PdfName.ANNOTS), page);
-            PdfArray annots = (o instanceof PdfArray) ? (PdfArray) o : null;
+            final Object o = PdfReader.getPdfObjectRelease(page.get(PdfName.ANNOTS), page);
+            // 10/06/2025: Agregamos comprobacion de tipo
+            final PdfArray annots = o instanceof PdfArray ? (PdfArray) o : null;
             if (annots == null) {
                 continue;
             }
             for (int j = 0; j < annots.size(); ++j) {
                 PdfDictionary annot = annots.getAsDict(j);
-                if (annot == null) {
+                
+                // 10/06/2025 - Adelantamos hasta este punto una comprobacion
+                // que estaba aparecia posteriormente
+                if ((annot == null) || !PdfName.WIDGET.equals(annot.getAsName(PdfName.SUBTYPE))) {
                     PdfReader.releaseLastXrefPartial(annots.getAsIndirectObject(j));
                     continue;
                 }
-                if (!PdfName.WIDGET.equals(annot.getAsName(PdfName.SUBTYPE))) {
+                
+                // Comprobamos que la firma encontrada (o el padre de esta) estaba entre las
+                // firmas declaradas
+                boolean found = false;
+                final PRIndirectReference foundSignRef = (PRIndirectReference) annots.getPdfObject(j);
+                final PRIndirectReference parentFoundSignRef = getParentReference(annot);
+                for (int l = 0; l < arrfds.size() && !found; l++) {
+                	final PRIndirectReference declaredSignRef = (PRIndirectReference) arrfds.getPdfObject(l);
+                	if ((foundSignRef.getNumber() == declaredSignRef.getNumber()) || (parentFoundSignRef != null && parentFoundSignRef.getNumber() == declaredSignRef.getNumber())) {
+                		found = true;
+                	}
+                }
+                
+                // 19/01/2024 - Ignoraremos las firmas en las que haya un valor
+                // en el lugar erroneo y no uno en el correcto
+                if (!found || !checkInvalidValuePosition(annot)) {
                     PdfReader.releaseLastXrefPartial(annots.getAsIndirectObject(j));
                     continue;
                 }
+            	// 19/01/2024 - FIN
+                
                 PdfDictionary widget = annot;
                 PdfDictionary dic = new PdfDictionary();
                 dic.putAll(annot);
@@ -317,6 +348,15 @@ public class AcroFields {
                 PdfIndirectReference parentRef = null;
 
                 while (annot != null) {
+                	
+                	// 19/01/2024 - Cargamos el valor correcto de la firma
+                	// con cuidado de no sobreescribirlo con uno anterior
+                	if (PdfName.SIG.equals(annot.getAsName(PdfName.FT))
+                			&& dic.get(PdfName.V) != null) {
+                		dic.remove(PdfName.V);
+                	}
+                	// 19/01/2024 - FIN
+                	
                     dic.mergeDifferent(annot);
                     PdfString t = annot.getAsString(PdfName.T);
                     if (t != null) {
@@ -371,7 +411,7 @@ public class AcroFields {
         }
         // some tools produce invisible signatures without an entry in the page annotation array
         // look for a single level annotation
-        PdfNumber sigFlags = top.getAsNumber(PdfName.SIGFLAGS);
+        PdfNumber sigFlags = top != null ? top.getAsNumber(PdfName.SIGFLAGS) : null;
         if (sigFlags == null || (sigFlags.intValue() & 1) != 1) {
             return;
         }
@@ -410,6 +450,74 @@ public class AcroFields {
             item.addTabOrder(-1);
         }
     }
+    
+    /**
+     * Comprueba si una anotacion es defirma y tiene asignado su valor en un lugar
+     * no v&aacute;lido.
+     * @param targetAnnot Anotaci&oacute;n que se quiere comprobar.
+     * @return {@code true} si la anotacion no es de firma, si no tiene valor o
+     * si este esta en el sitio correcto; {@code false} en caso contrario.
+     */
+    private static boolean checkInvalidValuePosition(final PdfDictionary targetAnnot) {
+
+    	PdfDictionary annot = new PdfDictionary();
+    	annot.putAll(targetAnnot);
+
+        final PdfDictionary dic = new PdfDictionary();
+        dic.putAll(annot);
+        while (annot != null) {
+        	// Comprobamos que no se haya encontrado el valor de firma antes
+        	// de llegar al propio elemento de firma. Si se encuentra antes
+        	// y ademas el objeto de firma no tiene un valor propio, se ignora
+        	// el campo
+        	if (PdfName.SIG.equals(annot.getAsName(PdfName.FT))
+        			&& dic.get(PdfName.V) != null) {
+
+        		// Si el elemento no tiene su propio valor, no podemos admitirno
+        		 if (annot.get(PdfName.V) == null) {
+        			 return false;
+        		 }
+
+        		// Ya que el elemento de firma tiene un valor, eliminamos
+        		// el anterior
+        		dic.remove(PdfName.V);
+        	}
+        	dic.mergeDifferent(annot);
+
+            annot = annot.getAsDict(PdfName.PARENT);
+        }
+
+		return true;
+	}
+    
+	/**
+     * Obtiene la referencia del objeto padre del diccionario indicado.
+     * @param dict Diccionario del que tomar el padre.
+     * @return Referencia al elemento padre o {@code null} si no ten&iacute;a.
+     */
+    private static PRIndirectReference getParentReference(final PdfDictionary dict) {
+
+    	PdfDictionary parentDict = dict;
+
+    	// Contaremos el numero de saltos que tenemos que dar hasta localizar
+    	// el elemento padre de otro. Lo hacemos para poder establecer un maximo
+    	// numero de saltos y poder evitar que una referencia ciclica bloquee el
+    	// proceso.
+    	int leap = 0;
+
+    	PRIndirectReference parentRef = null;
+    	do {
+    		final PdfObject parentObj = parentDict.get(PdfName.PARENT);
+    		if (parentObj != null && parentObj instanceof PRIndirectReference) {
+    			parentRef = (PRIndirectReference) parentObj;
+    		}
+    		parentDict = parentDict.getAsDict(PdfName.PARENT);
+    		leap++;
+    	}
+    	while (parentDict != null && leap < MAX_NUM_LEAPS_TO_FIND_PARENT);
+
+		return parentRef;
+	}
 
     /**
      * Gets the list of appearance names. Use it to get the names allowed with radio and checkbox fields. If the /Opt
@@ -630,17 +738,19 @@ public class AcroFields {
             }
             if ((ff & PdfFormField.FF_RADIO) != 0) {
                 return FIELD_TYPE_RADIOBUTTON;
-            } else {
-                return FIELD_TYPE_CHECKBOX;
-            }
+            } 
+
+            return FIELD_TYPE_CHECKBOX;
+            
         } else if (PdfName.TX.equals(type)) {
             return FIELD_TYPE_TEXT;
         } else if (PdfName.CH.equals(type)) {
             if ((ff & PdfFormField.FF_COMBO) != 0) {
                 return FIELD_TYPE_COMBO;
-            } else {
-                return FIELD_TYPE_LIST;
-            }
+            } 
+                
+            return FIELD_TYPE_LIST;
+            
         } else if (PdfName.SIG.equals(type)) {
             return FIELD_TYPE_SIGNATURE;
         }
@@ -801,11 +911,11 @@ public class AcroFields {
         tx.setVisibility(BaseField.VISIBLE_BUT_DOES_NOT_PRINT);
         if (nfl != null) {
             flags = nfl.intValue();
-            if ((flags & PdfFormField.FLAGS_PRINT) != 0 && (flags & PdfFormField.FLAGS_HIDDEN) != 0) {
+            if ((flags & PdfAnnotation.FLAGS_PRINT) != 0 && (flags & PdfAnnotation.FLAGS_HIDDEN) != 0) {
                 tx.setVisibility(BaseField.HIDDEN);
-            } else if ((flags & PdfFormField.FLAGS_PRINT) != 0 && (flags & PdfFormField.FLAGS_NOVIEW) != 0) {
+            } else if ((flags & PdfAnnotation.FLAGS_PRINT) != 0 && (flags & PdfAnnotation.FLAGS_NOVIEW) != 0) {
                 tx.setVisibility(BaseField.HIDDEN_BUT_PRINTABLE);
-            } else if ((flags & PdfFormField.FLAGS_PRINT) != 0) {
+            } else if ((flags & PdfAnnotation.FLAGS_PRINT) != 0) {
                 tx.setVisibility(BaseField.VISIBLE);
             }
         }
@@ -1277,7 +1387,7 @@ public class AcroFields {
                         if (value == null) {
                             mk.remove(dname);
                         } else {
-                            mk.put(dname, PdfFormField.getMKColor((Color) value));
+                            mk.put(dname, PdfAnnotation.getMKColor((Color) value));
                         }
                     }
                 }
@@ -2152,7 +2262,7 @@ public class AcroFields {
         if (sigNames != null) {
             return new ArrayList<>(sigNames.keySet());
         }
-        sigNames = new HashMap<>();
+        sigNames = new LinkedHashMap<>();
         List<Object[]> sorter = new ArrayList<>();
         for (Map.Entry<String, Item> entry : fields.entrySet()) {
             Item item = entry.getValue();
@@ -2585,7 +2695,7 @@ public class AcroFields {
      * String pdfFile = ...;// the pdf file used as template
      * ArrayList xfdfFiles = ...;// the xfdf file names
      * ArrayList pdfOutFiles = ...;// the output file names, one for each element in xpdfFiles
-     * HashMap cache = new HashMap();// the appearances cache
+     * HashMap cache = new LinkedHashMap();// the appearances cache
      * PdfReader originalReader = new PdfReader(pdfFile);
      * for (int k = 0; k &lt; xfdfFiles.size(); ++k) {
      *    PdfReader reader = new PdfReader(originalReader);

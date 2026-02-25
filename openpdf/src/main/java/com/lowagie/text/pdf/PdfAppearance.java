@@ -49,6 +49,7 @@ package com.lowagie.text.pdf;
 
 import com.lowagie.text.Rectangle;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -57,7 +58,7 @@ import java.util.Map;
 
 public class PdfAppearance extends PdfTemplate {
 
-    public static final Map<String, PdfName> stdFieldFontNames = new HashMap<>();
+    public static final Map<String, PdfName> stdFieldFontNames = new LinkedHashMap<>();
 
     static {
         stdFieldFontNames.put("Courier-BoldOblique", new PdfName("CoBO"));

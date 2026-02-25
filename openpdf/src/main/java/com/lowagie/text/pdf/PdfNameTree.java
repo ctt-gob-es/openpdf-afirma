@@ -49,6 +49,7 @@ package com.lowagie.text.pdf;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -172,7 +173,7 @@ public class PdfNameTree {
     }
 
     public static HashMap<String, PdfObject> readTree(PdfDictionary dic) {
-        HashMap<String, PdfObject> items = new HashMap<>();
+        HashMap<String, PdfObject> items = new LinkedHashMap<>();
         if (dic != null) {
             iterateItems(dic, items);
         }

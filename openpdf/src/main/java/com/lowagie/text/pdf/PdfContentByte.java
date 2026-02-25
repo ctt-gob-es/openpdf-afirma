@@ -72,6 +72,7 @@ import java.awt.print.PrinterJob;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -152,7 +153,7 @@ public class PdfContentByte {
     public static final int TEXT_RENDER_MODE_CLIP = 7;
     static final float MIN_FONT_SIZE = 0.0001f;
     private static final float[] unitRect = {0, 0, 0, 1, 1, 0, 1, 1};
-    private static final Map<PdfName, String> abrev = new HashMap<>();
+    private static final Map<PdfName, String> abrev = new LinkedHashMap<>();
     // membervariables
 
     static {

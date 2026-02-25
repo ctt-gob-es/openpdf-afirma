@@ -25,7 +25,7 @@ package com.lowagie.text.pdf.fonts.cmaps;
 import com.lowagie.text.error_messages.MessageLocalization;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,8 +38,8 @@ import java.util.Map;
 public class CMap {
 
     private List<CodespaceRange> codeSpaceRanges = new ArrayList<>();
-    private Map<Integer, String> singleByteMappings = new HashMap<>();
-    private Map<Integer, String> doubleByteMappings = new HashMap<>();
+    private Map<Integer, String> singleByteMappings = new LinkedHashMap<>();
+    private Map<Integer, String> doubleByteMappings = new LinkedHashMap<>();
 
     /**
      * Creates a new instance of CMap.

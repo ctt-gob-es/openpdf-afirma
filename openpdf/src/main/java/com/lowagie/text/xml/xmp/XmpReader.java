@@ -46,22 +46,28 @@
  */
 package com.lowagie.text.xml.xmp;
 
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.xml.XmlDomWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import com.lowagie.text.ExceptionConverter;
+import com.lowagie.text.xml.XMLConstants;
+import com.lowagie.text.xml.XmlDomWriter;
 
 /**
  * Reads an XMP stream into an org.w3c.dom.Document objects. Allows you to replace the contents of a specific tag.
@@ -72,6 +78,10 @@ import org.xml.sax.SAXException;
 public class XmpReader {
 
     private Document domDocument;
+    
+    private static DocumentBuilderFactory SECURE_FACTORY = null;
+
+    private static final Logger LOGGER = Logger.getLogger(XmpReader.class.getName());
 
     /**
      * Constructs an XMP reader
@@ -83,7 +93,7 @@ public class XmpReader {
      */
     public XmpReader(byte[] bytes) throws SAXException, IOException {
         try {
-            DocumentBuilderFactory fact = DocumentBuilderFactory.newInstance();
+            final DocumentBuilderFactory fact = getSecureDocumentFactory();
             fact.setNamespaceAware(true);
             DocumentBuilder db = fact.newDocumentBuilder();
             db.setEntityResolver((publicId, systemId) -> new InputSource(new StringReader("")));
@@ -93,6 +103,48 @@ public class XmpReader {
             throw new ExceptionConverter(e);
         }
     }
+    
+	private synchronized static DocumentBuilderFactory getSecureDocumentFactory() {
+
+    	if (SECURE_FACTORY != null) {
+    		return SECURE_FACTORY;
+    	}
+
+    	SECURE_FACTORY = DocumentBuilderFactory.newInstance();
+
+    	// Configuramos un procesado seguro
+    	try {
+    		SECURE_FACTORY.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE.booleanValue());
+		}
+		catch (final Exception e) {
+			LOGGER.log(Level.WARNING, "No se pudo configurar el procesador seguro: " + e); //$NON-NLS-1$
+		}
+
+		// Los siguientes atributos deberia establececerlos automaticamente la implementacion de
+		// la biblioteca al habilitar la caracteristica anterior. Por si acaso, los establecemos
+		// expresamente
+		final String[] securityProperties = new String[] {
+				XMLConstants.ACCESS_EXTERNAL_DTD,
+				XMLConstants.ACCESS_EXTERNAL_SCHEMA,
+				XMLConstants.ACCESS_EXTERNAL_STYLESHEET
+		};
+		for (final String securityProperty : securityProperties) {
+			try {
+				SECURE_FACTORY.setAttribute(securityProperty, ""); //$NON-NLS-1$
+			}
+			catch (final Exception e) {
+				// Ponemos las trazas en debug ya que estas propiedades son adicionales
+				// a la activacion de el procesado seguro
+				if (LOGGER.isLoggable(Level.FINE)) {
+					LOGGER.log(Level.FINE, "No se ha podido establecer una propiedad de seguridad '" + securityProperty + "' en la factoria XML: " + e); //$NON-NLS-1$ //$NON-NLS-2$
+				}
+			}
+		}
+
+		SECURE_FACTORY.setValidating(false);
+
+		return SECURE_FACTORY;
+	}
 
     /**
      * Replaces the content of a tag.
@@ -115,6 +167,57 @@ public class XmpReader {
         }
         return true;
     }
+    
+	/**
+	 * Replaces the content of a tag.
+	 * @param	parent			the tag name of the parent
+	 * @param	namespaceURI	the URI of the namespace
+	 * @param	localName		the tag name
+	 * @param	value			the new content for the tag
+	 * @return	true if the content was successfully replaced
+	 * @since	2.1.6 the return type has changed from void to boolean
+	 */
+	public boolean replace(final String parent, final String namespaceURI, final String localName, final String value) {
+
+		// Buscamos el nodo con el nombre indicado y hacemos el reemplazo de valor
+		// si se encuentra
+		final NodeList nodes = this.domDocument.getElementsByTagNameNS(namespaceURI, localName);
+		if (nodes.getLength() > 0) {
+			Node node;
+			for (int i = 0; i < nodes.getLength(); i++) {
+				node = nodes.item(i);
+				setNodeText(this.domDocument, node, value);
+			}
+			return true;
+		}
+
+		// Si no indico el nodo padre o este no se encuentra, concluimos que
+		// no se hace reemplazo
+		final NodeList parentNodes = parent == null ?
+				null :
+				this.domDocument.getElementsByTagName(parent);
+		if (parentNodes == null || parentNodes.getLength() == 0) {
+			return false;
+		}
+
+		// En caso contrario, se comprueba si el dato se indico como atributo
+		// del nodo padre y lo actualizaremos en caso de encontrarlo
+		Node node;
+		NamedNodeMap attrMap;
+		boolean replaced = false;
+		for (int i = 0; i < parentNodes.getLength(); i++) {
+			node = parentNodes.item(i);
+			attrMap = node.getAttributes();
+			if (attrMap != null) {
+				final Node targetAttr = attrMap.getNamedItemNS(namespaceURI, localName);
+				if (targetAttr != null) {
+					targetAttr.setNodeValue(value);
+					replaced = true;
+				}
+			}
+		}
+		return replaced;
+	}
 
     /**
      * Adds a tag.

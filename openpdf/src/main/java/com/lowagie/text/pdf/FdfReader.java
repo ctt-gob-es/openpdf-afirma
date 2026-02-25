@@ -49,7 +49,7 @@ package com.lowagie.text.pdf;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -104,7 +104,7 @@ public class FdfReader extends PdfReader {
     }
 
     protected void readPdf() throws IOException {
-        fields = new HashMap<>();
+        fields = new LinkedHashMap<>();
         try {
             tokens.checkFdfHeader();
             rebuildXref();
@@ -172,8 +172,8 @@ public class FdfReader extends PdfReader {
      * @deprecated use {@link #getAllFields()}
      */
     @Deprecated
-    public HashMap<String, PdfDictionary> getFields() {
-        return (HashMap<String, PdfDictionary>) fields;
+    public LinkedHashMap<String, PdfDictionary> getFields() {
+        return (LinkedHashMap<String, PdfDictionary>) fields;
     }
 
     /**

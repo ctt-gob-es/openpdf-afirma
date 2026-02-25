@@ -62,6 +62,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -136,7 +137,7 @@ public class PdfContentStreamHandler {
      * Loads all the supported graphics and text state operators in a map.
      */
     protected void installDefaultOperators() {
-        operators = new HashMap<>();
+        operators = new LinkedHashMap<>();
 
         registerContentOperator(new PdfContentStreamHandler.PushGraphicsState());
         registerContentOperator(new PdfContentStreamHandler.PopGraphicsState());

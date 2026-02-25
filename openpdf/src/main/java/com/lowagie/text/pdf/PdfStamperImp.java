@@ -46,6 +46,21 @@
  */
 package com.lowagie.text.pdf;
 
+import java.awt.geom.AffineTransform;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.xml.sax.SAXException;
+
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.ExceptionConverter;
@@ -58,20 +73,9 @@ import com.lowagie.text.pdf.collection.PdfCollection;
 import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
 import com.lowagie.text.pdf.internal.PdfViewerPreferencesImp;
 import com.lowagie.text.xml.xmp.XmpReader;
-import java.awt.geom.AffineTransform;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.xml.sax.SAXException;
 
 
-class PdfStamperImp extends PdfWriter {
+public class PdfStamperImp extends PdfWriter {
 
     protected AcroFields acroFields;
     protected boolean flat = false;
@@ -80,22 +84,22 @@ class PdfStamperImp extends PdfWriter {
     protected Set<String> partialFlattening = new HashSet<>();
     protected boolean useVp = false;
     protected PdfViewerPreferencesImp viewerPreferences = new PdfViewerPreferencesImp();
-    protected Map<PdfTemplate, Object> fieldTemplates = new HashMap<>();
+    protected Map<PdfTemplate, Object> fieldTemplates = new LinkedHashMap<>();
     protected boolean fieldsAdded = false;
     protected int sigFlags = 0;
     protected boolean append;
     protected IntHashtable marked;
     protected int initialXrefSize;
     protected PdfAction openAction;
-    HashMap<PdfReader, IntHashtable> readers2intrefs = new HashMap<>();
-    HashMap<PdfReader, RandomAccessFileOrArray> readers2file = new HashMap<>();
+    HashMap<PdfReader, IntHashtable> readers2intrefs = new LinkedHashMap<>();
+    HashMap<PdfReader, RandomAccessFileOrArray> readers2file = new LinkedHashMap<>();
     RandomAccessFileOrArray file;
     PdfReader reader;
     IntHashtable myXref = new IntHashtable();
     /**
      * Integer(page number) -> PageStamp
      */
-    HashMap<PdfDictionary, PageStamp> pagesToContent = new HashMap<>();
+    HashMap<PdfDictionary, PageStamp> pagesToContent = new LinkedHashMap<>();
     boolean closed = false;
     /**
      * Holds value of property rotateContents.
@@ -106,7 +110,9 @@ class PdfStamperImp extends PdfWriter {
     private Calendar modificationDate = null;
     private boolean updateMetadata = true;
     private boolean updateDocInfo = true;
-
+    
+    private PdfObject pdfFileID = null;
+    
     /**
      * Creates new PdfStamperImp.
      *
@@ -117,9 +123,24 @@ class PdfStamperImp extends PdfWriter {
      * @throws DocumentException on error
      * @throws IOException
      */
-    PdfStamperImp(PdfReader reader, OutputStream os, char pdfVersion, boolean append)
+    PdfStamperImp(PdfReader reader, OutputStream os, char pdfVersion, boolean append) throws DocumentException, IOException  {
+    	this(reader, os, pdfVersion, append, new GregorianCalendar());
+    }
+
+    /**
+     * Creates new PdfStamperImp.
+     *
+     * @param reader     the read PDF
+     * @param os         the output destination
+     * @param pdfVersion the new pdf version or '\0' to keep the same version as the original document
+     * @param append
+     * @param globalDate date
+     * @throws DocumentException on error
+     * @throws IOException
+     */
+    PdfStamperImp(PdfReader reader, OutputStream os, char pdfVersion, boolean append, Calendar globalDate)
             throws DocumentException, IOException {
-        super(new PdfDocument(), os);
+        super(new PdfDocument(globalDate), os);
         if (!reader.isOpenedWithFullPermissions()) {
             throw new BadPasswordException(
                     MessageLocalization.getComposedMessage("pdfreader.not.opened.with.owner.password"));
@@ -211,8 +232,12 @@ class PdfStamperImp extends PdfWriter {
             dic2.put(key, new PdfRectangle(m));
         }
     }
-
+    
     void close(Map<String, String> moreInfo) throws IOException {
+    	close(moreInfo, null);
+    }
+
+    void close(Map<String, String> moreInfo, final Calendar globalDate) throws IOException {
         if (closed) {
             return;
         }
@@ -225,6 +250,9 @@ class PdfStamperImp extends PdfWriter {
         }
         if (flatFreeText) {
             flatFreeTextFields();
+        }
+        if (globalDate != null) {
+        	this.modificationDate = globalDate;
         }
         addFieldResources();
         PdfDictionary catalog = reader.getCatalog();
@@ -324,16 +352,16 @@ class PdfStamperImp extends PdfWriter {
                 if (producerXMP == null) {
                     producerXMP = "";
                 }
-                if (!xmpr.replace("http://ns.adobe.com/pdf/1.3/", "Producer", producerXMP)) {
-                    if (!"".equals(producerXMP)) {
-                        xmpr.add("rdf:Description", "http://ns.adobe.com/pdf/1.3/", "pdf:Producer", producerXMP);
-                    }
-                }
+                //if (!xmpr.replace("http://ns.adobe.com/pdf/1.3/", "Producer", producerXMP)) {
+                //    if (!"".equals(producerXMP)) {
+                //        xmpr.add("rdf:Description", "http://ns.adobe.com/pdf/1.3/", "pdf:Producer", producerXMP);
+                //    }
+                //}
 
-                if (!xmpr.replace("http://ns.adobe.com/xap/1.0/", "ModifyDate", date.getW3CDate())) {
-                    xmpr.add("rdf:Description", "http://ns.adobe.com/xap/1.0/", "xmp:ModifyDate", date.getW3CDate());
-                }
-                xmpr.replace("http://ns.adobe.com/xap/1.0/", "MetadataDate", date.getW3CDate());
+                if (!xmpr.replace("rdf:Description", "http://ns.adobe.com/xap/1.0/", "ModifyDate", date.getW3CDate())) {
+					xmpr.add("rdf:Description", "http://ns.adobe.com/xap/1.0/", "xmp:ModifyDate", date.getW3CDate());
+				}
+        		xmpr.replace("rdf:Description", "http://ns.adobe.com/xap/1.0/", "MetadataDate", date.getW3CDate());
                 xmp = new PdfStream(xmpr.serializeDoc());
             } catch (SAXException | IOException e) {
                 xmp = new PdfStream(altMetadata);
@@ -416,6 +444,8 @@ class PdfStamperImp extends PdfWriter {
                 fileID = PdfEncryption.createInfoId(fileIDPart, fileIDPart);
             }
         }
+        
+        this.pdfFileID = fileID;
 
         PRIndirectReference iRoot = (PRIndirectReference) reader.trailer.get(PdfName.ROOT);
         PdfIndirectReference root = new PdfIndirectReference(0, getNewObjectNumber(reader, iRoot.getNumber(), 0));
@@ -456,9 +486,9 @@ class PdfStamperImp extends PdfWriter {
         }
 
         newInfo.put(PdfName.MODDATE, modificationDate);
-        if (producer != null) {
-            newInfo.put(PdfName.PRODUCER, new PdfString(producer));
-        }
+        //if (producer != null) {
+        //    newInfo.put(PdfName.PRODUCER, new PdfString(producer));
+        //}
 
         if (moreInfo != null) {
             for (Map.Entry<String, String> entry : moreInfo.entrySet()) {
@@ -1000,8 +1030,8 @@ class PdfStamperImp extends PdfWriter {
                     }
                 }
 
-                if (appDic != null && (flags & PdfFormField.FLAGS_PRINT) != 0
-                        && (flags & PdfFormField.FLAGS_HIDDEN) == 0) {
+                if (appDic != null && (flags & PdfAnnotation.FLAGS_PRINT) != 0
+                        && (flags & PdfAnnotation.FLAGS_HIDDEN) == 0) {
                     PdfObject normalAppearanceObj = appDic.get(PdfName.N);
                     PdfAppearance app = null;
                     PdfObject objReal = PdfReader.getPdfObject(normalAppearanceObj);
@@ -1228,7 +1258,7 @@ class PdfStamperImp extends PdfWriter {
                 PdfNumber ff = annDic.getAsNumber(PdfName.F);
                 int flags = (ff != null) ? ff.intValue() : 0;
 
-                if ((flags & PdfFormField.FLAGS_PRINT) != 0 && (flags & PdfFormField.FLAGS_HIDDEN) == 0) {
+                if ((flags & PdfAnnotation.FLAGS_PRINT) != 0 && (flags & PdfAnnotation.FLAGS_HIDDEN) == 0) {
                     PdfObject obj1 = annDic.get(PdfName.AP);
                     if (obj1 == null) {
                         continue;
@@ -1928,7 +1958,7 @@ class PdfStamperImp extends PdfWriter {
         PdfArray ocgs = dict.getAsArray(PdfName.OCGS);
         PdfIndirectReference ref;
         PdfLayer layer;
-        Map<String, PdfLayer> ocgmap = new HashMap<>();
+        Map<String, PdfLayer> ocgmap = new LinkedHashMap<>();
         for (PdfObject pdfObject : ocgs.getElements()) {
             ref = (PdfIndirectReference) pdfObject;
             layer = new PdfLayer(null);
@@ -2015,7 +2045,7 @@ class PdfStamperImp extends PdfWriter {
         if (documentOCG.isEmpty()) {
             readOCProperties();
         }
-        Map<String, PdfLayer> map = new HashMap<>();
+        Map<String, PdfLayer> map = new LinkedHashMap<>();
         PdfLayer layer;
         String key;
         for (Object o : documentOCG) {
@@ -2081,6 +2111,10 @@ class PdfStamperImp extends PdfWriter {
 
     public void setUpdateDocInfo(boolean updateDocInfo) {
         this.updateDocInfo = updateDocInfo;
+    }
+    
+    public PdfObject getFileID() {
+        return this.pdfFileID;
     }
 
     static class PageStamp {

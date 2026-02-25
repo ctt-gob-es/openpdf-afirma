@@ -55,7 +55,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.StringTokenizer;
@@ -463,8 +462,11 @@ public class PdfEncodings {
 
     static void encodeStream(InputStream in, ArrayList<char[]> planes)
             throws IOException {
-        BufferedReader rd = new BufferedReader(new InputStreamReader(in,
-                StandardCharsets.ISO_8859_1));
+    	final BufferedReader rd = new BoundedBufferedReader(
+        		new InputStreamReader(in, "iso-8859-1"),
+        		8192, // MaxLines
+        		8192  // MacLineLen
+    		);
         String line = null;
         int state = CIDNONE;
         byte[] seqs = new byte[7];

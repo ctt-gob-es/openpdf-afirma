@@ -57,6 +57,7 @@ import com.lowagie.text.Utilities;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -78,7 +79,7 @@ public class PdfChunk {
     /**
      * The allowed attributes in variable <CODE>attributes</CODE>.
      */
-    private static final Map<String, Object> keysAttributes = new HashMap<>();
+    private static final Map<String, Object> keysAttributes = new LinkedHashMap<>();
 
     /**
      * The allowed attributes in variable <CODE>noStroke</CODE>.
@@ -133,7 +134,7 @@ public class PdfChunk {
      * <p>
      * This attributes require the measurement of characters widths when rendering such as underline.
      */
-    protected Map<String, Object> attributes = new HashMap<>();
+    protected Map<String, Object> attributes = new LinkedHashMap<>();
 
     /**
      * Non metric attributes.

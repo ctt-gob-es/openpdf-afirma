@@ -54,8 +54,8 @@ import com.lowagie.text.error_messages.MessageLocalization;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -162,7 +162,7 @@ public abstract class BaseField {
      * combo box flag.
      */
     public static final int COMB = PdfFormField.FF_COMB;
-    private final static Map<PdfName, Integer> fieldKeys = new HashMap<>();
+    private final static Map<PdfName, Integer> fieldKeys = new LinkedHashMap<>();
 
     static {
         fieldKeys.putAll(PdfCopyFieldsImp.fieldKeys);

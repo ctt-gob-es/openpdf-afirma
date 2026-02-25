@@ -54,6 +54,7 @@ package com.lowagie.text.pdf;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -77,7 +78,7 @@ public class PRAcroForm extends PdfDictionary {
     public PRAcroForm(PdfReader reader) {
         this.reader = reader;
         fields = new ArrayList<>();
-        fieldByName = new HashMap<>();
+        fieldByName = new LinkedHashMap<>();
         stack = new ArrayList<>();
     }
 

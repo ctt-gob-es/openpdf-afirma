@@ -52,6 +52,19 @@ package com.lowagie.text.pdf;
 import static com.lowagie.text.pdf.PdfAnnotation.FLAGS_PRINT;
 import static java.awt.Font.LAYOUT_RIGHT_TO_LEFT;
 
+import java.awt.Color;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
 import com.lowagie.text.Anchor;
 import com.lowagie.text.Annotation;
 import com.lowagie.text.BadElementException;
@@ -79,16 +92,6 @@ import com.lowagie.text.pdf.collection.PdfCollection;
 import com.lowagie.text.pdf.draw.DrawInterface;
 import com.lowagie.text.pdf.internal.PdfAnnotationsImp;
 import com.lowagie.text.pdf.internal.PdfViewerPreferencesImp;
-import java.awt.Color;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 
 /**
@@ -256,13 +259,13 @@ public class PdfDocument extends Document {
     /**
      * This is the size of the several boxes of the current Page.
      */
-    protected HashMap<String, PdfRectangle> thisBoxSize = new HashMap<>();
+    protected HashMap<String, PdfRectangle> thisBoxSize = new LinkedHashMap<>();
 
 // DOCLISTENER METHODS END
     /**
      * This is the size of the several boxes that will be used in the next page.
      */
-    protected HashMap<String, PdfRectangle> boxSize = new HashMap<>();
+    protected HashMap<String, PdfRectangle> boxSize = new LinkedHashMap<>();
     /**
      * The duration of the page
      */
@@ -311,6 +314,19 @@ public class PdfDocument extends Document {
         addProducer();
         addCreationDate();
     }
+    
+    /**
+     * Constructs a new PDF document.
+     * @param globalDate
+     */
+    PdfDocument(final Calendar globalDate) {
+        super();
+        addProducer();
+        addCreationDate(globalDate);
+
+        info = new PdfInfo(globalDate);
+    }
+
 
     /**
      * Integrate a paragraph into a table, so it can be a whole.
@@ -324,7 +340,7 @@ public class PdfDocument extends Document {
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100f);
         PdfPCell cell = new PdfPCell();
-        cell.setBorder(Table.NO_BORDER);
+        cell.setBorder(Rectangle.NO_BORDER);
         cell.setPadding(0);
         for (int i = 0; i < paragraph.size(); i++) {
             if (paragraph.get(i) instanceof Chunk) {
@@ -1153,7 +1169,7 @@ public class PdfDocument extends Document {
         currentHeight = 0;
 
         // backgroundcolors, etc...
-        thisBoxSize = new HashMap<>(boxSize);
+        thisBoxSize = new LinkedHashMap<>(boxSize);
         if (pageSize.getBackgroundColor() != null
                 || pageSize.hasBorders()
                 || pageSize.getBorderColor() != null) {
@@ -2662,7 +2678,7 @@ public class PdfDocument extends Document {
         ctx.pagetop = indentTop();
         ctx.oldHeight = currentHeight;
         ctx.cellGraphics = new PdfContentByte(writer);
-        ctx.rowspanMap = new HashMap<>();
+        ctx.rowspanMap = new LinkedHashMap<>();
         ctx.table = table;
 
         // initialization of parameters
@@ -3193,6 +3209,12 @@ public class PdfDocument extends Document {
             addSubject(subject);
             addAuthor(author);
         }
+        
+        private PdfInfo(final Calendar globalDate) {
+            super();
+            addProducer();
+            addCreationDate(globalDate);
+        }
 
         /**
          * Adds the title of the document.
@@ -3267,6 +3289,12 @@ public class PdfDocument extends Document {
         void addCreationDate() {
             PdfString date = new PdfDate();
             put(PdfName.CREATIONDATE, date);
+        }
+        
+        private void addCreationDate(final Calendar globalDate) {
+            final PdfString date = new PdfDate(globalDate);
+            put(PdfName.CREATIONDATE, date);
+            put(PdfName.MODDATE, date);
         }
 
         /**
@@ -3471,7 +3499,7 @@ public class PdfDocument extends Document {
         float maxCellHeight;
         Map<PdfCell, Integer> rowspanMap = new HashMap<>();
         // Possible keys and values are Set or Integer. Really?
-        Map<PdfCell, Integer> pageMap = new HashMap<>();
+        Map<PdfCell, Integer> pageMap = new LinkedHashMap<>();
         Map<Integer, Set<PdfCell>> pageCellSetMap = new HashMap<>();
 
         /**

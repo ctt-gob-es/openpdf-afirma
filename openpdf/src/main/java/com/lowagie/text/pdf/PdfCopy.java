@@ -56,6 +56,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -753,7 +754,7 @@ public class PdfCopy extends PdfWriter {
                     }
                     expandFields(field, allAnnots);
                     if (cstp.fieldTemplates == null) {
-                        cstp.fieldTemplates = new HashMap<>();
+                        cstp.fieldTemplates = new LinkedHashMap<>();
                     }
                 } else {
                     allAnnots.add(annot);

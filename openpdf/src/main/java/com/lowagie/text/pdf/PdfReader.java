@@ -49,16 +49,6 @@
 
 package com.lowagie.text.pdf;
 
-import com.lowagie.bouncycastle.BouncyCastleHelper;
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.error_messages.MessageLocalization;
-import com.lowagie.text.exceptions.BadPasswordException;
-import com.lowagie.text.exceptions.InvalidPdfException;
-import com.lowagie.text.exceptions.UnsupportedPdfException;
-import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
-import com.lowagie.text.pdf.internal.PdfViewerPreferencesImp;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -74,11 +64,23 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.zip.InflaterInputStream;
+
+import com.lowagie.bouncycastle.BouncyCastleHelper;
+import com.lowagie.text.ExceptionConverter;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.error_messages.MessageLocalization;
+import com.lowagie.text.exceptions.BadPasswordException;
+import com.lowagie.text.exceptions.InvalidPdfException;
+import com.lowagie.text.exceptions.UnsupportedPdfException;
+import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
+import com.lowagie.text.pdf.internal.PdfViewerPreferencesImp;
 
 /**
  * Reads a PDF document.
@@ -1295,7 +1297,7 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
      * @return content of the document information dictionary
      */
     public Map<String, String> getInfo() {
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new LinkedHashMap<>();
         PdfDictionary info = trailer.getAsDict(PdfName.INFO);
         if (info == null) {
             return map;
@@ -1569,15 +1571,14 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
                     }
                     if (PdfName.V2.equals(dic.get(PdfName.CFM))) {
                         cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
-                        lengthValue = 128;
                     } else if (PdfName.AESV2.equals(dic.get(PdfName.CFM))) {
                         cryptoMode = PdfWriter.ENCRYPTION_AES_128;
-                        lengthValue = 128;
                     } else {
                         throw new UnsupportedPdfException(
                                 MessageLocalization
                                         .getComposedMessage("no.compatible.encryption.found"));
                     }
+				lengthValue = 128;
                     PdfObject em = dic.get(PdfName.ENCRYPTMETADATA);
                     if (em != null && em.toString().equals("false")) {
                         cryptoMode |= PdfWriter.DO_NOT_ENCRYPT_METADATA;
@@ -1889,7 +1890,21 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
                         MessageLocalization.getComposedMessage("error.reading.objstm"));
             }
             tokens.seek(address);
-            return readPRObject();
+            
+            // Correccion iText
+            tokens.nextToken();
+            PdfObject obj;
+            if (tokens.getTokenType() == PRTokeniser.TK_NUMBER) {
+                obj = new PdfNumber(this.tokens.getStringValue());
+            }
+            else {
+            	tokens.seek(address);
+                obj = readPRObject();
+            }
+            return obj;
+            
+            // Antes:
+            //return readPRObject();
         } finally {
             tokens = saveTokens;
         }
@@ -1988,8 +2003,9 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
         if (calc) {
             byte[] tline = new byte[16];
             tokens.seek(start);
+            int pos;
             while (true) {
-                int pos = tokens.getFilePointer();
+                pos = tokens.getFilePointer();
                 if (!tokens.readLineSegment(tline)) {
                     break;
                 }
@@ -2050,7 +2066,20 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
             for (int k = 0; k < n; ++k) {
                 if (map.containsKey(k)) {
                     tokens.seek(address[k]);
-                    PdfObject obj = readPRObject();
+                    
+                    // Correccion iText
+                    tokens.nextToken();
+                    PdfObject obj;
+                    if (tokens.getTokenType() == PRTokeniser.TK_NUMBER) {
+                    	obj = new PdfNumber(this.tokens.getStringValue());
+                    }
+                    else {
+                    	tokens.seek(address[k]);
+                    	obj = readPRObject();
+                    }
+                    // Antes:
+					// PdfObject obj = readPRObject();
+                    
                     xrefObj.set(objNumber[k], obj);
                 }
             }
@@ -2253,7 +2282,7 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
         // type 2 -> index, obj num
         ensureXrefSize(size * 2);
         if (objStmMark == null && !partial) {
-            objStmMark = new HashMap<>();
+            objStmMark = new LinkedHashMap<>();
         }
         if (objStmToOffset == null && partial) {
             objStmToOffset = new IntHashtable();
@@ -3084,7 +3113,7 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
      * @since 2.1.6
      */
     public HashMap<Object, PdfObject> getNamedDestinationFromNames(boolean keepNames) {
-        HashMap<Object, PdfObject> names = new HashMap<>();
+        HashMap<Object, PdfObject> names = new LinkedHashMap<>();
         if (catalog.get(PdfName.DESTS) != null) {
             PdfDictionary dic = (PdfDictionary) getPdfObjectRelease(catalog.get(PdfName.DESTS));
             if (dic == null) {
@@ -3136,7 +3165,7 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
                 }
             }
         }
-        return new HashMap<>();
+        return new LinkedHashMap<>();
     }
 
     /**

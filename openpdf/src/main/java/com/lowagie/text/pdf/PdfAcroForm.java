@@ -52,6 +52,7 @@ package com.lowagie.text.pdf;
 import com.lowagie.text.ExceptionConverter;
 import com.lowagie.text.Rectangle;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -66,7 +67,7 @@ public class PdfAcroForm extends PdfDictionary {
     /**
      * This is a map containing FieldTemplates.
      */
-    private Map<PdfTemplate, Object> fieldTemplates = new HashMap<>();
+    private Map<PdfTemplate, Object> fieldTemplates = new LinkedHashMap<>();
 
     /**
      * This is an array containing DocumentFields.

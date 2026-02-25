@@ -49,7 +49,6 @@
 
 package com.lowagie.text.pdf;
 
-import com.lowagie.text.xml.XmlDomWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -61,16 +60,24 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EmptyStackException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import com.lowagie.text.xml.XMLConstants;
+import com.lowagie.text.xml.XmlDomWriter;
 
 /**
  * Processes XFA forms.
@@ -89,6 +96,10 @@ public class XfaForm {
     private boolean xfaPresent;
     private org.w3c.dom.Document domDocument;
     private boolean changed;
+    
+    private static DocumentBuilderFactory SECURE_FACTORY = null;
+    
+    private static final Logger LOGGER = Logger.getLogger(XfaForm.class.getName());
 
     /**
      * An empty constructor to build on.
@@ -128,7 +139,7 @@ public class XfaForm {
             bout.write(b);
         }
         bout.close();
-        DocumentBuilderFactory fact = DocumentBuilderFactory.newInstance();
+        DocumentBuilderFactory fact = getSecureDocumentFactory();
         fact.setNamespaceAware(true);
         DocumentBuilder db = fact.newDocumentBuilder();
         db.setEntityResolver((publicId, systemId) -> new InputSource(new StringReader("")));
@@ -427,6 +438,48 @@ public class XfaForm {
     public void setChanged(boolean changed) {
         this.changed = changed;
     }
+    
+    private synchronized static DocumentBuilderFactory getSecureDocumentFactory() {
+
+    	if (SECURE_FACTORY != null) {
+    		return SECURE_FACTORY;
+    	}
+
+    	SECURE_FACTORY = DocumentBuilderFactory.newInstance();
+
+    	// Configuramos un procesado seguro
+    	try {
+    		SECURE_FACTORY.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE.booleanValue());
+		}
+		catch (final Exception e) {
+			LOGGER.log(Level.WARNING, "No se pudo configurar el procesador seguro: " + e); //$NON-NLS-1$
+		}
+
+		// Los siguientes atributos deberia establececerlos automaticamente la implementacion de
+		// la biblioteca al habilitar la caracteristica anterior. Por si acaso, los establecemos
+		// expresamente
+		final String[] securityProperties = new String[] {
+				XMLConstants.ACCESS_EXTERNAL_DTD,
+				XMLConstants.ACCESS_EXTERNAL_SCHEMA,
+				XMLConstants.ACCESS_EXTERNAL_STYLESHEET
+		};
+		for (final String securityProperty : securityProperties) {
+			try {
+				SECURE_FACTORY.setAttribute(securityProperty, ""); //$NON-NLS-1$
+			}
+			catch (final Exception e) {
+				// Ponemos las trazas en debug ya que estas propiedades son adicionales
+				// a la activacion de el procesado seguro
+				if (LOGGER.isLoggable(Level.FINE)) {
+					LOGGER.log(Level.FINE, "No se ha podido establecer una propiedad de seguridad '" + securityProperty + "' en la factoria XML: " + e); //$NON-NLS-1$ //$NON-NLS-2$
+				}
+			}
+		}
+
+		SECURE_FACTORY.setValidating(false);
+
+		return SECURE_FACTORY;
+	}
 
     /**
      * Gets the class that contains the template processing section of the XFA.
@@ -1016,10 +1069,10 @@ public class XfaForm {
          */
         public Xml2SomDatasets(Node n) {
             order = new ArrayList<>();
-            name2Node = new HashMap<>();
+            name2Node = new LinkedHashMap<>();
             stack = new Stack2();
             anform = 0;
-            inverseSearch = new HashMap<>();
+            inverseSearch = new LinkedHashMap<>();
             processDatasetsInternal(n);
         }
 
@@ -1091,7 +1144,7 @@ public class XfaForm {
         }
 
         private void processDatasetsInternal(Node n) {
-            Map<String, Integer> ss = new HashMap<>();
+            Map<String, Integer> ss = new LinkedHashMap<>();
             Node n2 = n.getFirstChild();
             while (n2 != null) {
                 if (n2.getNodeType() == Node.ELEMENT_NODE) {
@@ -1134,8 +1187,8 @@ public class XfaForm {
          * @param items the Collection
          */
         public AcroFieldsSearch(Collection<String> items) {
-            inverseSearch = new HashMap<>();
-            acroShort2LongName = new HashMap<>();
+            inverseSearch = new LinkedHashMap<>();
+            acroShort2LongName = new LinkedHashMap<>();
             for (String itemName : items) {
                 String itemShort = getShortName(itemName);
                 acroShort2LongName.put(itemShort, itemName);
@@ -1198,11 +1251,11 @@ public class XfaForm {
          */
         public Xml2SomTemplate(Node n) {
             order = new ArrayList<>();
-            name2Node = new HashMap<>();
+            name2Node = new LinkedHashMap<>();
             stack = new Stack2();
             anform = 0;
             templateLevel = 0;
-            inverseSearch = new HashMap<>();
+            inverseSearch = new LinkedHashMap<>();
             processTemplate(n, null);
         }
 
@@ -1243,9 +1296,9 @@ public class XfaForm {
 
         private void processTemplate(Node n, Map<String, Integer> ff) {
             if (ff == null) {
-                ff = new HashMap<>();
+                ff = new LinkedHashMap<>();
             }
-            Map<String, Integer> ss = new HashMap<>();
+            Map<String, Integer> ss = new LinkedHashMap<>();
             Node n2 = n.getFirstChild();
             while (n2 != null) {
                 if (n2.getNodeType() == Node.ELEMENT_NODE) {

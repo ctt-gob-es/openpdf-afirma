@@ -30,6 +30,7 @@ import java.io.PushbackInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -223,7 +224,7 @@ public class CMapParser {
             case '<': {
                 int theNextByte = is.read();
                 if (theNextByte == '<') {
-                    Map<String, Object> result = new HashMap<>();
+                    Map<String, Object> result = new LinkedHashMap<>();
                     //we are reading a dictionary
                     Object key = parseNextToken(is);
                     while (key instanceof LiteralName && key != MARK_END_OF_DICTIONARY) {

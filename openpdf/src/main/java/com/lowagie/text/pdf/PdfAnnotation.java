@@ -54,6 +54,7 @@ import com.lowagie.text.error_messages.MessageLocalization;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -690,7 +691,7 @@ public class PdfAnnotation extends PdfDictionary {
             return;
         }
         if (templates == null) {
-            templates = new HashMap<>();
+            templates = new LinkedHashMap<>();
         }
         templates.put(template, null);
     }
@@ -715,7 +716,7 @@ public class PdfAnnotation extends PdfDictionary {
             return;
         }
         if (templates == null) {
-            templates = new HashMap<>();
+            templates = new LinkedHashMap<>();
         }
         templates.put(template, null);
     }

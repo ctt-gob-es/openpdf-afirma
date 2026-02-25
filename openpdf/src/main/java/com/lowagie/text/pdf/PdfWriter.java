@@ -371,6 +371,14 @@ public class PdfWriter extends DocWriter implements
      * PDFA-1B level.
      */
     public static final int PDFA1B = 4;
+    /** 
+     * PDFA-2A level.
+     */
+    public static final int PDFA2A = 5;
+    /** 
+     * PDFA-2B level. 
+     */
+    public static final int PDFA2B = 6;
     /**
      * No encryption
      */
@@ -561,7 +569,7 @@ public class PdfWriter extends DocWriter implements
     /**
      * This is the list with all the images in the document.
      */
-    private final HashMap<Long, PdfName> images = new HashMap<>();
+    private final HashMap<Long, PdfName> images = new LinkedHashMap<>();
     /**
      * the pdfdocument object.
      */
@@ -647,12 +655,12 @@ public class PdfWriter extends DocWriter implements
      * The name counter for the form XObjects name.
      */
     protected int formXObjectsCounter = 1;
-    protected HashMap<PdfReader, PdfReaderInstance> importedPages = new HashMap<>();
+    protected HashMap<PdfReader, PdfReaderInstance> importedPages = new LinkedHashMap<>();
     protected PdfReaderInstance currentPdfReaderInstance;
     /**
      * The colors of this document
      */
-    protected HashMap<PdfSpotColor, ColorDetails> documentColors = new HashMap<>();
+    protected HashMap<PdfSpotColor, ColorDetails> documentColors = new LinkedHashMap<>();
     /**
      * The color number counter for the colors in the document.
      */
@@ -660,17 +668,17 @@ public class PdfWriter extends DocWriter implements
     /**
      * The patterns of this document
      */
-    protected HashMap<PdfPatternPainter, PdfName> documentPatterns = new HashMap<>();
+    protected HashMap<PdfPatternPainter, PdfName> documentPatterns = new LinkedHashMap<>();
     /**
      * The pattern number counter for the colors in the document.
      */
     protected int patternNumber = 1;
 
     // [C6] Actions (open and additional)
-    protected HashMap<PdfShadingPattern, Object> documentShadingPatterns = new HashMap<>();
-    protected HashMap<PdfShading, Object> documentShadings = new HashMap<>();
+    protected HashMap<PdfShadingPattern, Object> documentShadingPatterns = new LinkedHashMap<>();
+    protected HashMap<PdfShading, Object> documentShadings = new LinkedHashMap<>();
     protected HashMap<PdfDictionary, PdfObject[]> documentExtGState = new LinkedHashMap<>();
-    protected HashMap<Object, PdfObject[]> documentProperties = new HashMap<>();
+    protected HashMap<Object, PdfObject[]> documentProperties = new LinkedHashMap<>();
     protected boolean tagged = false;
     protected PdfStructureTreeRoot structureTreeRoot;
     /**
@@ -707,7 +715,7 @@ public class PdfWriter extends DocWriter implements
     protected int runDirection = RUN_DIRECTION_NO_BIDI;
     protected float userunit = 0f;
     protected PdfDictionary defaultColorspace = new PdfDictionary();
-    protected HashMap<ColorDetails, ColorDetails> documentSpotPatterns = new HashMap<>();
+    protected HashMap<ColorDetails, ColorDetails> documentSpotPatterns = new LinkedHashMap<>();
 
     //  [C9] Metadata
     protected ColorDetails patternColorspaceRGB;
@@ -722,7 +730,7 @@ public class PdfWriter extends DocWriter implements
      *
      * @since 2.1.5
      */
-    protected HashMap<PdfStream, PdfIndirectReference> JBIG2Globals = new HashMap<>();
+    protected HashMap<PdfStream, PdfIndirectReference> JBIG2Globals = new LinkedHashMap<>();
 
 //  [C10] PDFX Conformance
     /**
@@ -1834,7 +1842,7 @@ public class PdfWriter extends DocWriter implements
             throw new PdfXConformanceException(
                     MessageLocalization.getComposedMessage("a.pdfx.conforming.document.cannot.be.encrypted"));
         }
-        if (pdfx == PDFA1A || pdfx == PDFA1B) {
+        if (pdfx == PDFA1A || pdfx == PDFA1B || pdfx == PDFA2A || pdfx == PDFA2B) {
             setPdfVersion(VERSION_1_4);
         } else if (pdfx != PDFXNONE) {
             setPdfVersion(VERSION_1_3);

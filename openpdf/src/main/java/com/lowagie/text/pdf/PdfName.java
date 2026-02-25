@@ -53,7 +53,7 @@ import com.lowagie.text.error_messages.MessageLocalization;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -3225,7 +3225,7 @@ public class PdfName extends PdfObject implements Comparable<PdfName> {
      */
     static {
         Field[] fields = PdfName.class.getDeclaredFields();
-        staticNames = new HashMap<>(fields.length);
+        staticNames = new LinkedHashMap<>(fields.length);
         final int flags = Modifier.STATIC | Modifier.PUBLIC | Modifier.FINAL;
         try {
             for (Field curFld : fields) {

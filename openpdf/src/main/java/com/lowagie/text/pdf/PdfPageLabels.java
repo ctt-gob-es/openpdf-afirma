@@ -34,6 +34,7 @@ import com.lowagie.text.factories.RomanNumberFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -92,7 +93,7 @@ public class PdfPageLabels {
      * Creates a new PdfPageLabel with a default logical page 1
      */
     public PdfPageLabels() {
-        map = new HashMap<>();
+        map = new LinkedHashMap<>();
         addPageLabel(1, PdfPageLabels.DECIMAL_ARABIC_NUMERALS, null, 1);
     }
 

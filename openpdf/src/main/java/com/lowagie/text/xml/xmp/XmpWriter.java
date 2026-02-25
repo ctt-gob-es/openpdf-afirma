@@ -214,6 +214,16 @@ public class XmpWriter implements AutoCloseable {
                 }
                 addRdfDescription(a1);
             }
+            else if (PdfXConformance == PdfWriter.PDFA2A || PdfXConformance == PdfWriter.PDFA2B) {
+                final PdfA2Schema a2 = new PdfA2Schema();
+                if (PdfXConformance == PdfWriter.PDFA2A) {
+					a2.addConformance("A");
+				}
+                else {
+					a2.addConformance("B");
+				}
+                addRdfDescription(a2);
+            }
         }
     }
 

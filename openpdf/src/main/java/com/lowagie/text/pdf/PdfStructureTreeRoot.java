@@ -50,6 +50,7 @@ package com.lowagie.text.pdf;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -59,7 +60,7 @@ import java.util.Map;
  */
 public class PdfStructureTreeRoot extends PdfDictionary {
 
-    private final Map<Integer, PdfArray> parentTree = new HashMap<>();
+    private final Map<Integer, PdfArray> parentTree = new LinkedHashMap<>();
     private final PdfIndirectReference reference;
 
     /**
