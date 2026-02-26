@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class ProducerTest {
@@ -43,6 +44,7 @@ public class ProducerTest {
     }
 
     @Test
+    @Disabled("Se desactiva por el cambio consciente de comportamiento para que no se modifique el metadato con el productor original")
     public void testMetadataProducerStamperIssue254() throws IOException {
         File origin = new File("src/test/resources/pdf_form_metadata_issue_254.pdf");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

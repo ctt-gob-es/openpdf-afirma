@@ -49,18 +49,18 @@
 
 package com.lowagie.text;
 
+import com.lowagie.text.error_messages.MessageLocalization;
+import com.lowagie.text.pdf.FopGlyphProcessor;
+import com.lowagie.text.pdf.PdfDate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Properties;
-
-import com.lowagie.text.error_messages.MessageLocalization;
-import com.lowagie.text.pdf.FopGlyphProcessor;
-import com.lowagie.text.pdf.PdfDate;
 
 
 /**
@@ -124,7 +124,7 @@ public class Document implements DocListener {
 
     static {
         RELEASE = getVersionNumber();
-        OPENPDF_VERSION = "Autofirma";
+        OPENPDF_VERSION = OPENPDF + " " + RELEASE;
     }
 
     /**
@@ -299,7 +299,7 @@ public class Document implements DocListener {
      * @param listener the new DocListener.
      */
     public void addDocListener(DocListener listener) {
-        this.listeners.add(listener);
+        listeners.add(listener);
     }
 
     /**
@@ -308,7 +308,7 @@ public class Document implements DocListener {
      * @param listener the DocListener that has to be removed.
      */
     public void removeDocListener(DocListener listener) {
-        this.listeners.remove(listener);
+        listeners.remove(listener);
     }
 
     /**
@@ -319,21 +319,20 @@ public class Document implements DocListener {
      * </CODE> if not
      * @throws DocumentException when a document isn't open yet, or has been closed
      */
-    @Override
-	public boolean add(Element element) throws DocumentException {
-        if (this.close) {
+    public boolean add(Element element) throws DocumentException {
+        if (close) {
             throw new DocumentException(
                     MessageLocalization.getComposedMessage("the.document.has.been.closed.you.can.t.add.any.elements"));
         }
-        if (!this.open && element.isContent()) {
+        if (!open && element.isContent()) {
             throw new DocumentException(MessageLocalization.getComposedMessage(
                     "the.document.is.not.open.yet.you.can.only.add.meta.information"));
         }
         boolean success = false;
         if (element instanceof ChapterAutoNumber) {
-            this.chapternumber = ((ChapterAutoNumber) element).setAutomaticNumber(this.chapternumber);
+            chapternumber = ((ChapterAutoNumber) element).setAutomaticNumber(chapternumber);
         }
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             success |= listener.add(element);
         }
         if (element instanceof LargeElement) {
@@ -352,15 +351,14 @@ public class Document implements DocListener {
      * opening the document, the change will be effective starting from the second page. You have to open the document
      * before you can begin to add content to the body of the document.
      */
-    @Override
-	public void open() {
-        if (!this.close) {
-            this.open = true;
+    public void open() {
+        if (!close) {
+            open = true;
         }
-        for (DocListener listener : this.listeners) {
-            listener.setPageSize(this.pageSize);
-            listener.setMargins(this.marginLeft, this.marginRight, this.marginTop,
-                    this.marginBottom);
+        for (DocListener listener : listeners) {
+            listener.setPageSize(pageSize);
+            listener.setMargins(marginLeft, marginRight, marginTop,
+                    marginBottom);
             listener.open();
         }
     }
@@ -374,10 +372,9 @@ public class Document implements DocListener {
      * @param pageSize the new pagesize
      * @return a <CODE>boolean</CODE>
      */
-    @Override
-	public boolean setPageSize(Rectangle pageSize) {
+    public boolean setPageSize(Rectangle pageSize) {
         this.pageSize = pageSize;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setPageSize(pageSize);
         }
         return true;
@@ -395,14 +392,13 @@ public class Document implements DocListener {
      * @param marginBottom the margin on the bottom
      * @return a <CODE>boolean</CODE>
      */
-    @Override
-	public boolean setMargins(float marginLeft, float marginRight,
+    public boolean setMargins(float marginLeft, float marginRight,
             float marginTop, float marginBottom) {
         this.marginLeft = marginLeft;
         this.marginRight = marginRight;
         this.marginTop = marginTop;
         this.marginBottom = marginBottom;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setMargins(marginLeft, marginRight, marginTop,
                     marginBottom);
         }
@@ -416,12 +412,11 @@ public class Document implements DocListener {
      * @return <CODE>true</CODE> if the page was added, <CODE>false</CODE>
      * if not.
      */
-    @Override
-	public boolean newPage() {
-        if (!this.open || this.close) {
+    public boolean newPage() {
+        if (!open || close) {
             return false;
         }
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.newPage();
         }
         return true;
@@ -435,10 +430,9 @@ public class Document implements DocListener {
      *
      * @param header the new header
      */
-    @Override
-	public void setHeader(HeaderFooter header) {
+    public void setHeader(HeaderFooter header) {
         this.header = header;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setHeader(header);
         }
     }
@@ -448,10 +442,9 @@ public class Document implements DocListener {
      * <p>
      * This change will be effective starting from the next page.
      */
-    @Override
-	public void resetHeader() {
+    public void resetHeader() {
         this.header = null;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.resetHeader();
         }
     }
@@ -464,10 +457,9 @@ public class Document implements DocListener {
      *
      * @param footer the new footer
      */
-    @Override
-	public void setFooter(HeaderFooter footer) {
+    public void setFooter(HeaderFooter footer) {
         this.footer = footer;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setFooter(footer);
         }
     }
@@ -477,10 +469,9 @@ public class Document implements DocListener {
      * <p>
      * This change will be effective starting from the next page.
      */
-    @Override
-	public void resetFooter() {
+    public void resetFooter() {
         this.footer = null;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.resetFooter();
         }
     }
@@ -490,10 +481,9 @@ public class Document implements DocListener {
      * <p>
      * This change will be effective starting from the next page.
      */
-    @Override
-	public void resetPageCount() {
-        this.pageN = 0;
-        for (DocListener listener : this.listeners) {
+    public void resetPageCount() {
+        pageN = 0;
+        for (DocListener listener : listeners) {
             listener.resetPageCount();
         }
     }
@@ -509,10 +499,9 @@ public class Document implements DocListener {
      *
      * @param pageN the new page number
      */
-    @Override
-	public void setPageCount(int pageN) {
+    public void setPageCount(int pageN) {
         this.pageN = pageN;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setPageCount(pageN);
         }
     }
@@ -534,11 +523,11 @@ public class Document implements DocListener {
      */
     @Override
     public void close() {
-        if (!this.close) {
-            this.open = false;
-            this.close = true;
+        if (!close) {
+            open = false;
+            close = true;
         }
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.close();
         }
     }
@@ -696,7 +685,7 @@ public class Document implements DocListener {
      * @return <CODE>true</CODE> if successful, <CODE>false</CODE> otherwise
      */
     public boolean addCreationDate() {
-        return addCreationDate(new GregorianCalendar());
+    	return addCreationDate(new GregorianCalendar());
     }
     
     /**
@@ -710,11 +699,11 @@ public class Document implements DocListener {
      */
     public boolean addCreationDate(final Calendar globalDate) {
         try {
-			/* bugfix by 'taqua' (Thomas) */
-			final SimpleDateFormat sdf = new SimpleDateFormat(
-					"EEE MMM dd HH:mm:ss zzz yyyy");
-			return add(new Meta(Element.CREATIONDATE, sdf.format(globalDate.getTime())));
-		} catch (final DocumentException de) {
+            /* bugfix by 'taqua' (Thomas) */
+            final SimpleDateFormat sdf = new SimpleDateFormat(
+                    "EEE MMM dd HH:mm:ss zzz yyyy");
+            return add(new Meta(Element.CREATIONDATE, sdf.format(new Date())));
+        } catch (DocumentException de) {
             throw new ExceptionConverter(de);
         }
     }
@@ -767,7 +756,7 @@ public class Document implements DocListener {
      */
 
     public float leftMargin() {
-        return this.marginLeft;
+        return marginLeft;
     }
 
     /**
@@ -777,7 +766,7 @@ public class Document implements DocListener {
      */
 
     public float rightMargin() {
-        return this.marginRight;
+        return marginRight;
     }
 
     /**
@@ -787,7 +776,7 @@ public class Document implements DocListener {
      */
 
     public float topMargin() {
-        return this.marginTop;
+        return marginTop;
     }
 
     /**
@@ -797,7 +786,7 @@ public class Document implements DocListener {
      */
 
     public float bottomMargin() {
-        return this.marginBottom;
+        return marginBottom;
     }
 
     /**
@@ -807,7 +796,7 @@ public class Document implements DocListener {
      */
 
     public float left() {
-        return this.pageSize.getLeft(this.marginLeft);
+        return pageSize.getLeft(marginLeft);
     }
 
     /**
@@ -817,7 +806,7 @@ public class Document implements DocListener {
      */
 
     public float right() {
-        return this.pageSize.getRight(this.marginRight);
+        return pageSize.getRight(marginRight);
     }
 
     /**
@@ -827,7 +816,7 @@ public class Document implements DocListener {
      */
 
     public float top() {
-        return this.pageSize.getTop(this.marginTop);
+        return pageSize.getTop(marginTop);
     }
 
     /**
@@ -837,7 +826,7 @@ public class Document implements DocListener {
      */
 
     public float bottom() {
-        return this.pageSize.getBottom(this.marginBottom);
+        return pageSize.getBottom(marginBottom);
     }
 
     /**
@@ -848,7 +837,7 @@ public class Document implements DocListener {
      */
 
     public float left(float margin) {
-        return this.pageSize.getLeft(this.marginLeft + margin);
+        return pageSize.getLeft(marginLeft + margin);
     }
 
     /**
@@ -859,7 +848,7 @@ public class Document implements DocListener {
      */
 
     public float right(float margin) {
-        return this.pageSize.getRight(this.marginRight + margin);
+        return pageSize.getRight(marginRight + margin);
     }
 
     /**
@@ -870,7 +859,7 @@ public class Document implements DocListener {
      */
 
     public float top(float margin) {
-        return this.pageSize.getTop(this.marginTop + margin);
+        return pageSize.getTop(marginTop + margin);
     }
 
     /**
@@ -881,7 +870,7 @@ public class Document implements DocListener {
      */
 
     public float bottom(float margin) {
-        return this.pageSize.getBottom(this.marginBottom + margin);
+        return pageSize.getBottom(marginBottom + margin);
     }
 
     /**
@@ -900,7 +889,7 @@ public class Document implements DocListener {
      * @return <CODE>true</CODE> if the document is open
      */
     public boolean isOpen() {
-        return this.open;
+        return open;
     }
 
     /**
@@ -971,10 +960,9 @@ public class Document implements DocListener {
      * @param marginMirroring <CODE>true</CODE> to mirror the margins
      * @return always <CODE>true</CODE>
      */
-    @Override
-	public boolean setMarginMirroring(boolean marginMirroring) {
+    public boolean setMarginMirroring(boolean marginMirroring) {
         this.marginMirroring = marginMirroring;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setMarginMirroring(marginMirroring);
         }
         return true;
@@ -989,10 +977,9 @@ public class Document implements DocListener {
      * @return always <CODE>true</CODE>
      * @since 2.1.6
      */
-    @Override
-	public boolean setMarginMirroringTopBottom(boolean marginMirroringTopBottom) {
+    public boolean setMarginMirroringTopBottom(boolean marginMirroringTopBottom) {
         this.marginMirroringTopBottom = marginMirroringTopBottom;
-        for (DocListener listener : this.listeners) {
+        for (DocListener listener : listeners) {
             listener.setMarginMirroringTopBottom(marginMirroringTopBottom);
         }
         return true;
@@ -1004,7 +991,7 @@ public class Document implements DocListener {
      * @return the margin mirroring flag
      */
     public boolean isMarginMirroring() {
-        return this.marginMirroring;
+        return marginMirroring;
     }
 
     /**
@@ -1016,7 +1003,7 @@ public class Document implements DocListener {
      * @return the current document language
      */
     public String getDocumentLanguage() {
-        return this.textRenderingOptions.getDocumentLanguage();
+        return textRenderingOptions.getDocumentLanguage();
     }
 
     /**
@@ -1028,7 +1015,7 @@ public class Document implements DocListener {
      * @param documentLanguage the wanted language
      */
     public void setDocumentLanguage(String documentLanguage) {
-        this.textRenderingOptions.setDocumentLanguage(documentLanguage);
+        textRenderingOptions.setDocumentLanguage(documentLanguage);
     }
 
     /**
@@ -1038,7 +1025,7 @@ public class Document implements DocListener {
      * @see #setGlyphSubstitutionEnabled(boolean)
      */
     public boolean isGlyphSubstitutionEnabled() {
-        return this.textRenderingOptions.isGlyphSubstitutionEnabled();
+        return textRenderingOptions.isGlyphSubstitutionEnabled();
     }
 
     /**
@@ -1049,7 +1036,7 @@ public class Document implements DocListener {
      * @see #setDocumentLanguage(String)
      */
     public void setGlyphSubstitutionEnabled(boolean glyphSubstitutionEnabled) {
-        this.textRenderingOptions.setGlyphSubstitutionEnabled(glyphSubstitutionEnabled);
+        textRenderingOptions.setGlyphSubstitutionEnabled(glyphSubstitutionEnabled);
     }
 
     /**
@@ -1060,7 +1047,7 @@ public class Document implements DocListener {
      * @see #isGlyphSubstitutionEnabled()
      */
     public TextRenderingOptions getTextRenderingOptions() {
-        return this.textRenderingOptions;
+        return textRenderingOptions;
     }
 
     /**

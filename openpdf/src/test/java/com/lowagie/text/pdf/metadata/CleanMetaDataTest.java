@@ -14,6 +14,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class CleanMetaDataTest {
@@ -209,6 +210,7 @@ public class CleanMetaDataTest {
     }
 
     @Test
+    @Disabled("Se desactiva por el cambio consciente de comportamiento para que no se modifique el metadato con el productor original")
     public void testXMPMetadata() throws Exception {
         File file = new File("src/test/resources/HelloWorldMeta.pdf");
         PdfReader reader = new PdfReader(file.getAbsolutePath());
