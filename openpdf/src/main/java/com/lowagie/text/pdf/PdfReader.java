@@ -1571,14 +1571,15 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
                     }
                     if (PdfName.V2.equals(dic.get(PdfName.CFM))) {
                         cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
+                        lengthValue = 128;
                     } else if (PdfName.AESV2.equals(dic.get(PdfName.CFM))) {
                         cryptoMode = PdfWriter.ENCRYPTION_AES_128;
+                        lengthValue = 128;
                     } else {
                         throw new UnsupportedPdfException(
                                 MessageLocalization
                                         .getComposedMessage("no.compatible.encryption.found"));
                     }
-				lengthValue = 128;
                     PdfObject em = dic.get(PdfName.ENCRYPTMETADATA);
                     if (em != null && em.toString().equals("false")) {
                         cryptoMode |= PdfWriter.DO_NOT_ENCRYPT_METADATA;
@@ -2003,9 +2004,8 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
         if (calc) {
             byte[] tline = new byte[16];
             tokens.seek(start);
-            int pos;
             while (true) {
-                pos = tokens.getFilePointer();
+                int pos = tokens.getFilePointer();
                 if (!tokens.readLineSegment(tline)) {
                     break;
                 }
@@ -2085,7 +2085,7 @@ public class PdfReader implements PdfViewerPreferences, Closeable {
             }
         } finally {
             tokens = saveTokens;
-        }
+        } 
     }
 
     private void ensureXrefSize(int size) {

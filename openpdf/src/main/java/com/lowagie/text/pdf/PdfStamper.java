@@ -263,8 +263,8 @@ public class PdfStamper
                 tempFile = Files.createTempFile(tempFile.toPath(), "pdf", null).toFile();
             }
             FileOutputStream fout = new FileOutputStream(tempFile);
-            stp = new PdfStamper(reader, fout, pdfVersion, append, globalDate);
-            stp.sigApp = new PdfSignatureAppearance(stp.stamper, globalDate);
+            stp = new PdfStamper(reader, fout, pdfVersion, append, gDate);
+            stp.sigApp = new PdfSignatureAppearance(stp.stamper, gDate);
             stp.sigApp.setTempFile(tempFile);
         }
         stp.sigApp.setOriginalout(os);

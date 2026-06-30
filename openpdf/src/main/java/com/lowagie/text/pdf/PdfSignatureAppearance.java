@@ -1158,7 +1158,6 @@ public class PdfSignatureAppearance {
         // Se elimina la comprobacion de si es el campo es visible o no, ya que
         // eso impide que se puedan firmar campos de firma invisibles que ya
         // existan
-        //final boolean fieldExists = !(isInvisible() || isNewField());
         final boolean fieldExists = !isNewField();
         
         PdfIndirectReference refSig = this.writer.getPdfIndirectReference();
@@ -1292,7 +1291,7 @@ public class PdfSignatureAppearance {
             docmdp.put(new PdfName("DocMDP"), refSig);
             writer.reader.getCatalog().put(new PdfName("Perms"), docmdp);
         }
-        writer.close(stamper.getInfoDictionary());
+        writer.close(stamper.getInfoDictionary(), globalDate!=null ? globalDate : new GregorianCalendar());
 
         range = new long[exclusionLocations.size() * 2];
         long byteRangePosition = exclusionLocations

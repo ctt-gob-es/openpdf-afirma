@@ -493,7 +493,7 @@ public class PdfPKCS7 {
                 ASN1TaggedObject tagsig = (ASN1TaggedObject) signerInfo
                         .getObjectAt(next);
                 ASN1Set sseq = ASN1Set.getInstance(tagsig, false);
-                sigAttr = sseq.getEncoded();
+                sigAttr = sseq.getEncoded(ASN1Encoding.DER);
 
                 for (int k = 0; k < sseq.size(); ++k) {
                     ASN1Sequence seq2 = (ASN1Sequence) sseq.getObjectAt(k);

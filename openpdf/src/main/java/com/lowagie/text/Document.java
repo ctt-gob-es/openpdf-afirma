@@ -702,7 +702,7 @@ public class Document implements DocListener {
             /* bugfix by 'taqua' (Thomas) */
             final SimpleDateFormat sdf = new SimpleDateFormat(
                     "EEE MMM dd HH:mm:ss zzz yyyy");
-            return add(new Meta(Element.CREATIONDATE, sdf.format(new Date())));
+            return add(new Meta(Element.CREATIONDATE, sdf.format(globalDate.getTime())));
         } catch (DocumentException de) {
             throw new ExceptionConverter(de);
         }
